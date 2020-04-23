@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-server-conf
+  labels:
+    name: prometheus-server-conf
+  namespace: monitoring
+data:
+  prometheus.rules: |-
+    groups:
+    - name: devopscube demo alert
+      rules:
+      - alert: High Pod Memory
+        expr: sum(container_memory_usage_bytes) > 1
+        for: 1m
+        labels:
+          severity: slack
+        annotations:
+          summary: High Memory Usage
+  prometheus.yml: |-
+    global:
+      scrape_interval: 60s
+      evaluation_interval: 60s
+    scrape_configs:
+      - job_name: 'kubernetes-pods'
+        tls_config:
+          insecure_skip_verify: true
+        kubernetes_sd_configs:
+        - role: pod
+        relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+          action: keep
+          regex: true
+        - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scheme]
+          action: replace
+          target_label: __scheme__
+          regex: (.+)
+        - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+          action: replace
+          target_label: __metrics_path__
+          regex: (.+)
+        - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_type]
+          action: replace
+          target_label: __param_type
+          regex: (.+)
+        - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+          action: replace
+          regex: ([^:]+)(?::\d+)?;(\d+)
+          replacement: $1:$2
+          target_label: __address__
+        - source_labels: [__meta_kubernetes_namespace]
+          action: replace
+          target_label: namespace
+        - source_labels: [__meta_kubernetes_pod_name]
+          action: replace
+          target_label: pod
+        metric_relabel_configs:
+        - source_labels: [ __name__ ]
+          regex: '(proxy_request_count|proxy_response_count|proxy_latencies.*|target_request_count|target_response_count|target_latencies.*|policy_latencies.*|server_faults|server_nio|server_thread|server_request_count|server_response_count|server_latencies.*|upstream_request_count|upstream_response_count|upstream_latencies.*|udca_upstream_uploaded_file_count|udca_server_pruned_file_count|udca_upstream_http_error_count|udca_server_retry_cache_size|udca_server_local_file_count|udca_server_local_file_oldest_ts|udca_server_local_file_latest_ts|udca_disk_used_bytes|udca_upstream_uploaded_file_size|udca_server_total_latencies.*|udca_upstream_http_latencies.*|udca_server_upload_latencies.*|process_max_fds|process_open_fds|jvm_memory_pool_bytes_max|jvm_memory_pool_bytes_init|jvm_memory_bytes_max|process_cpu_seconds_total|jvm_memory_bytes_used|org_apache_cassandra_metrics_compaction_pendingtasks|jvm_memory_bytes_init|jvm_memory_pool_bytes_used|jvm_memory_pool_bytes_committed|org_apache_cassandra_metrics_clientrequest_latency|jvm_memory_bytes_committed|)'
+          action: keep
+
+
+
